@@ -60,9 +60,8 @@ Aplikasi ini menggunakan endpoint API berikut dari ePesantren:
 
 ## 🖼️ Screenshot
 
-![Dashboard](path/to/dashboard-screenshot.png)
-![Detail Santri](path/to/detail-screenshot.png)
-![Transaksi](path/to/transaction-screenshot.png)
+![Dashboard](https://blog.classy.id/upload/gambar_berita/e5d6839ec60f281443323caffce9c029_20250306133352.png)
+![Transaksi](https://blog.classy.id/upload/gambar_berita/e5d6839ec60f281443323caffce9c029_20250306133352.png)
 
 ## 🔧 Pengembangan
 
