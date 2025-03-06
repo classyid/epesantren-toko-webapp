@@ -1,4 +1,4 @@
-# ePesantren-Tabungan
+# ePesantren-Toko-WebApp
 
 ![ePesantren Toko Logo](https://camo.githubusercontent.com/c9980da00de26732f310eabebaf7f9767efd23d2a0a9665eb6b29175886ef85f/68747470733a2f2f65706573616e7472656e2e636f2e69642f77702d636f6e74656e742f75706c6f6164732f323032312f30392f65706573616e7472656e5f6869746d2d31353336783333322e706e67)
 ![Version](https://img.shields.io/badge/version-1.0.0-blue)
