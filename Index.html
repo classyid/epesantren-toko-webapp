@@ -1,0 +1,828 @@
+<!-- HTML File for the Web App -->
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ePesantren Toko - Sistem Tabungan Santri</title>
+  
+  <!-- Tailwind CSS via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Font Awesome for icons -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+  
+  <!-- jQuery for AJAX -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+  
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            pesantren: {
+              light: '#e0f2e9',
+              DEFAULT: '#4ade80',
+              dark: '#16a34a',
+              darker: '#15803d'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  
+  <style>
+    .loader {
+      border-top-color: #16a34a;
+      -webkit-animation: spinner 1.5s linear infinite;
+      animation: spinner 1.5s linear infinite;
+    }
+    
+    @-webkit-keyframes spinner {
+      0% { -webkit-transform: rotate(0deg); }
+      100% { -webkit-transform: rotate(360deg); }
+    }
+    
+    @keyframes spinner {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body class="bg-gray-50">
+  <!-- Header -->
+  <header class="bg-gradient-to-r from-pesantren-dark to-pesantren-darker text-white shadow-md">
+    <div class="container mx-auto p-4">
+      <div class="flex flex-col md:flex-row justify-between items-center">
+        <div class="flex items-center mb-4 md:mb-0">
+          <i class="fas fa-mosque text-3xl mr-3"></i>
+          <div>
+            <h1 class="text-2xl font-bold">ePesantren Toko</h1>
+            <p class="text-sm opacity-90">Sistem Tabungan & Pembayaran Santri</p>
+          </div>
+        </div>
+        <div class="flex space-x-2">
+          <button id="refreshBtn" class="flex items-center bg-white text-pesantren-darker px-4 py-2 rounded-md shadow hover:bg-gray-100 transition">
+            <i class="fas fa-sync-alt mr-2"></i> Refresh
+          </button>
+          <button id="aboutBtn" class="flex items-center bg-pesantren-darker text-white px-4 py-2 rounded-md shadow hover:bg-opacity-90 transition">
+            <i class="fas fa-info-circle mr-2"></i> Tentang
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="container mx-auto p-4">
+    <!-- Search and Filters -->
+    <div class="bg-white p-4 rounded-lg shadow-md mb-6">
+      <div class="flex flex-col md:flex-row gap-4">
+        <div class="flex-1">
+          <label for="searchInput" class="block text-gray-700 font-medium mb-1">Cari Santri</label>
+          <div class="relative">
+            <input type="text" id="searchInput" placeholder="Cari berdasarkan NIS atau nama..." 
+                  class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-pesantren-dark">
+            <i class="fas fa-search absolute right-3 top-3 text-gray-400"></i>
+          </div>
+        </div>
+        <div class="md:w-48">
+          <label for="filterSelect" class="block text-gray-700 font-medium mb-1">Filter</label>
+          <select id="filterSelect" class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-pesantren-dark">
+            <option value="all">Semua Santri</option>
+            <option value="active">Santri dengan RFID</option>
+            <option value="balance">Ada Saldo</option>
+            <option value="nobalance">Saldo 0</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      <div class="bg-white p-4 rounded-lg shadow-md flex flex-col">
+        <span class="text-gray-500 text-sm">Total Santri</span>
+        <div class="flex items-end justify-between mt-2">
+          <span id="totalStudents" class="text-3xl font-bold">0</span>
+          <div class="bg-pesantren-light p-2 rounded-full text-pesantren-dark">
+            <i class="fas fa-users"></i>
+          </div>
+        </div>
+      </div>
+      
+      <div class="bg-white p-4 rounded-lg shadow-md flex flex-col">
+        <span class="text-gray-500 text-sm">Total Saldo</span>
+        <div class="flex items-end justify-between mt-2">
+          <span id="totalBalance" class="text-3xl font-bold">Rp 0</span>
+          <div class="bg-pesantren-light p-2 rounded-full text-pesantren-dark">
+            <i class="fas fa-wallet"></i>
+          </div>
+        </div>
+      </div>
+      
+      <div class="bg-white p-4 rounded-lg shadow-md flex flex-col">
+        <span class="text-gray-500 text-sm">Santri dengan RFID Aktif</span>
+        <div class="flex items-end justify-between mt-2">
+          <span id="activeRfid" class="text-3xl font-bold">0</span>
+          <div class="bg-pesantren-light p-2 rounded-full text-pesantren-dark">
+            <i class="fas fa-id-card"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Data loader -->
+    <div id="loaderContainer" class="flex justify-center my-8 hidden">
+      <div class="loader ease-linear rounded-full border-4 border-t-4 border-gray-200 h-12 w-12"></div>
+    </div>
+
+    <!-- Student List -->
+    <div class="bg-white rounded-lg shadow-md overflow-hidden">
+      <div class="p-4 bg-pesantren-dark text-white font-medium flex justify-between items-center">
+        <h2>Daftar Santri</h2>
+        <span id="studentCount" class="bg-white text-pesantren-dark px-2 py-1 rounded-full text-sm">0 Santri</span>
+      </div>
+      
+      <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200">
+          <thead class="bg-gray-50">
+            <tr>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">NIS</th>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama</th>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Saldo</th>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">RFID</th>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
+            </tr>
+          </thead>
+          <tbody id="studentTableBody" class="bg-white divide-y divide-gray-200">
+            <!-- Data will be loaded here -->
+            <tr>
+              <td colspan="6" class="px-6 py-4 text-center text-gray-500">
+                Memuat data santri...
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      
+      <!-- Pagination -->
+      <div class="px-4 py-3 bg-gray-50 border-t border-gray-200 sm:px-6 flex flex-col sm:flex-row sm:items-center sm:justify-between">
+        <div class="text-sm text-gray-700">
+          Menampilkan <span id="startRow">0</span> hingga <span id="endRow">0</span> dari <span id="totalRows">0</span> data
+        </div>
+        <div class="mt-2 sm:mt-0 flex justify-center">
+          <nav class="flex rounded-md shadow-sm -space-x-px">
+            <button id="prevPage" class="px-3 py-2 rounded-l-md border border-gray-300 bg-white text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
+              <i class="fas fa-chevron-left"></i>
+            </button>
+            <span id="currentPage" class="px-4 py-2 border border-gray-300 bg-pesantren-light text-pesantren-darker font-medium">1</span>
+            <button id="nextPage" class="px-3 py-2 rounded-r-md border border-gray-300 bg-white text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
+              <i class="fas fa-chevron-right"></i>
+            </button>
+          </nav>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Modal Container -->
+  <div id="modalContainer" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+    <!-- Student Detail Modal -->
+    <div id="studentModal" class="hidden bg-white rounded-lg shadow-xl w-full max-w-lg mx-auto">
+      <div class="p-4 bg-pesantren-dark text-white flex justify-between items-center rounded-t-lg">
+        <h3 class="text-lg font-medium">Detail Santri</h3>
+        <button class="closeModal text-white hover:text-gray-200">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      
+      <div class="p-6">
+        <div class="flex flex-col sm:flex-row mb-6">
+          <div class="flex-1 mb-4 sm:mb-0">
+            <div class="text-5xl text-center sm:text-left text-pesantren-dark mb-2">
+              <i class="fas fa-user-circle"></i>
+            </div>
+            <h3 id="modalStudentName" class="text-xl font-bold text-center sm:text-left">Nama Santri</h3>
+            <p id="modalStudentNis" class="text-gray-600 text-center sm:text-left">NIS: -</p>
+          </div>
+          
+          <div class="flex-1">
+            <div class="bg-gray-100 p-4 rounded-lg">
+              <p class="text-gray-600 text-sm mb-1">Saldo:</p>
+              <p id="modalStudentBalance" class="text-2xl font-bold text-pesantren-darker">Rp 0</p>
+              
+              <div class="mt-4">
+                <p class="text-gray-600 text-sm mb-1">Status RFID:</p>
+                <div id="modalRfidStatus" class="flex items-center">
+                  <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                    <i class="fas fa-times-circle mr-1"></i> Tidak Aktif
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Transaction Section -->
+        <div class="border-t pt-4">
+          <h4 class="font-bold mb-4">Transaksi Baru</h4>
+          
+          <div class="flex flex-col sm:flex-row gap-4 mb-4">
+            <div class="flex-1">
+              <label for="transactionAmount" class="block text-gray-700 text-sm font-medium mb-1">Nominal (Rp)</label>
+              <input type="number" id="transactionAmount" min="0" placeholder="Masukkan nominal" 
+                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-pesantren-dark">
+            </div>
+            
+            <div class="flex-1">
+              <label for="transactionType" class="block text-gray-700 text-sm font-medium mb-1">Jenis Transaksi</label>
+              <select id="transactionType" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-pesantren-dark">
+                <option value="use_saving">Pembayaran (Kurangi Saldo)</option>
+              </select>
+            </div>
+          </div>
+          
+          <div id="transactionStatus" class="mb-4 hidden">
+            <!-- Transaction status will appear here -->
+          </div>
+          
+          <div class="flex justify-end">
+            <button id="processTransaction" class="bg-pesantren-dark text-white px-4 py-2 rounded-md hover:bg-pesantren-darker transition">
+              <i class="fas fa-check-circle mr-2"></i> Proses Transaksi
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- About Modal -->
+    <div id="aboutModal" class="hidden bg-white rounded-lg shadow-xl w-full max-w-md mx-auto">
+      <div class="p-4 bg-pesantren-dark text-white flex justify-between items-center rounded-t-lg">
+        <h3 class="text-lg font-medium">Tentang Aplikasi</h3>
+        <button class="closeModal text-white hover:text-gray-200">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      
+      <div class="p-6">
+        <div class="text-center mb-4">
+          <i class="fas fa-mosque text-5xl text-pesantren-dark"></i>
+          <h3 class="text-xl font-bold mt-3">ePesantren Toko</h3>
+          <p class="text-gray-600">Sistem Tabungan & Pembayaran Santri</p>
+        </div>
+        
+        <div class="text-gray-600 text-sm">
+          <p class="mb-3">Aplikasi ini merupakan antarmuka untuk sistem integrasi antara ePesantren dan Toko. Melalui aplikasi ini, administrator dapat:</p>
+          <ul class="list-disc pl-5 mb-3 space-y-1">
+            <li>Melihat data santri dan saldo tabungan</li>
+            <li>Melakukan transaksi pembayaran menggunakan saldo tabungan</li>
+            <li>Mengelola status RFID santri</li>
+          </ul>
+          <p class="mb-2">Aplikasi ini terhubung dengan API ePesantren untuk sinkronisasi data secara real-time.</p>
+          <p class="text-xs text-gray-500 mt-4">Versi 1.0.0 | Dibuat dengan Google Apps Script</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  // Global variables
+  let allStudentData = [];
+  let currentPage = 1;
+  let itemsPerPage = 10;
+  let selectedStudent = null;
+  
+  // Initialize on document ready
+  $(document).ready(function() {
+    // Show loader and fetch data
+    showLoader();
+    fetchAllStudentData();
+    
+    // Set up event listeners
+    setupEventListeners();
+  });
+  
+  // Fetch all student data
+  function fetchAllStudentData() {
+    // In a real implementation, this would call your Google Apps Script function
+    // For now, we'll simulate the API response with our JSON data
+    google.script.run
+      .withSuccessHandler(processStudentData)
+      .withFailureHandler(handleApiError)
+      .getAllStudentData();
+  }
+  
+  // Process student data received from API
+  function processStudentData(response) {
+    // For demonstration, we parse the data directly
+    // In real implementation, this would receive data from Google Apps Script
+    try {
+      // If the data is already an object (from Apps Script)
+      allStudentData = response.data || [];
+      
+      // Log data untuk debugging
+      console.log("Data santri diterima:", allStudentData.length, "santri");
+      
+      // Update statistics
+      updateStats();
+      
+      // Display the first page
+      displayStudents(1);
+      
+      hideLoader();
+    } catch (error) {
+      console.error("Error processing student data:", error);
+      logErrorToClient("processStudentData", error);
+      handleApiError(error);
+    }
+  }
+  
+  // Update statistics
+  function updateStats() {
+    const totalStudents = allStudentData.length;
+    const activeRfid = allStudentData.filter(student => student.rfid && student.status === "Y").length;
+    const totalBalance = allStudentData.reduce((sum, student) => sum + parseInt(student.saldo || 0), 0);
+    
+    $("#totalStudents").text(totalStudents);
+    $("#activeRfid").text(activeRfid);
+    $("#totalBalance").text(formatCurrency(totalBalance));
+  }
+  
+  // Display students for the current page
+  function displayStudents(page) {
+    currentPage = page;
+    const filteredData = filterStudentData();
+    const start = (page - 1) * itemsPerPage;
+    const end = Math.min(start + itemsPerPage, filteredData.length);
+    
+    // Update pagination info
+    $("#startRow").text(filteredData.length > 0 ? start + 1 : 0);
+    $("#endRow").text(end);
+    $("#totalRows").text(filteredData.length);
+    $("#studentCount").text(`${filteredData.length} Santri`);
+    $("#currentPage").text(page);
+    
+    // Enable/disable pagination buttons
+    $("#prevPage").prop("disabled", page === 1);
+    $("#nextPage").prop("disabled", end >= filteredData.length);
+    
+    // Clear table body
+    const tbody = $("#studentTableBody");
+    tbody.empty();
+    
+    // If no data
+    if (filteredData.length === 0) {
+      tbody.append(`
+        <tr>
+          <td colspan="6" class="px-6 py-4 text-center text-gray-500">
+            Tidak ada data santri yang sesuai dengan filter
+          </td>
+        </tr>
+      `);
+      return;
+    }
+    
+    // Populate table with student data
+    for (let i = start; i < end; i++) {
+      const student = filteredData[i];
+      
+      // RFID status badge
+      const rfidStatus = student.rfid && student.status === "Y" 
+        ? `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800"><i class="fas fa-check-circle mr-1"></i> Aktif</span>` 
+        : `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800"><i class="fas fa-times-circle mr-1"></i> Tidak Aktif</span>`;
+      
+      // Format saldo as currency
+      const formattedSaldo = formatCurrency(parseInt(student.saldo || 0));
+      
+      // Create table row
+      tbody.append(`
+        <tr class="hover:bg-gray-50 cursor-pointer student-row" data-nis="${student.nis}">
+          <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${student.nis}</td>
+          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">${student.nama}</td>
+          <td class="px-6 py-4 whitespace-nowrap text-sm font-medium ${parseInt(student.saldo) > 0 ? 'text-green-600' : 'text-gray-500'}">${formattedSaldo}</td>
+          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${student.rfid || '-'}</td>
+          <td class="px-6 py-4 whitespace-nowrap text-sm">${rfidStatus}</td>
+          <td class="px-6 py-4 whitespace-nowrap text-sm">
+            <button class="text-pesantren-dark hover:text-pesantren-darker view-student-btn" data-nis="${student.nis}" onclick="viewStudentDetail('${student.nis}')">
+              <i class="fas fa-eye"></i>
+            </button>
+          </td>
+        </tr>
+      `);
+    }
+  }
+  
+  // Function untuk melihat detail santri (ditambahkan)
+  function viewStudentDetail(nis) {
+    console.log("Fungsi viewStudentDetail dipanggil dengan NIS:", nis);
+    
+    // Cari data santri berdasarkan NIS
+    const santri = allStudentData.find(s => String(s.nis).trim() === String(nis).trim());
+    
+    if (santri) {
+      console.log("Data santri ditemukan:", santri);
+      selectedStudent = santri;
+      showStudentModal(santri);
+    } else {
+      console.error("Data santri tidak ditemukan untuk NIS:", nis);
+      // Coba ambil data dari server sebagai fallback
+      getStudentFromServer(nis);
+    }
+  }
+  
+  // Fungsi untuk mengambil data santri dari server (ditambahkan)
+  function getStudentFromServer(nis) {
+    console.log("Mengambil data santri dari server untuk NIS:", nis);
+    showLoader();
+    
+    google.script.run
+      .withSuccessHandler(function(studentData) {
+        hideLoader();
+        if (studentData) {
+          console.log("Data santri berhasil diambil dari server:", studentData);
+          selectedStudent = studentData;
+          showStudentModal(studentData);
+        } else {
+          console.error("Server tidak mengembalikan data santri");
+          alert("Maaf, data santri tidak ditemukan di server.");
+        }
+      })
+      .withFailureHandler(function(error) {
+        hideLoader();
+        console.error("Error saat mengambil data santri dari server:", error);
+        logErrorToClient("getStudentFromServer", error);
+        alert("Terjadi kesalahan saat mengambil data santri dari server.");
+      })
+      .getSingleStudentData(nis);
+  }
+  
+  // Filter student data based on search and filter
+  function filterStudentData() {
+    const searchTerm = $("#searchInput").val().toLowerCase();
+    const filterValue = $("#filterSelect").val();
+    
+    return allStudentData.filter(student => {
+      // Search filter
+      const matchesSearch = !searchTerm || 
+                           student.nis.toLowerCase().includes(searchTerm) || 
+                           student.nama.toLowerCase().includes(searchTerm);
+      
+      // Category filter
+      let matchesFilter = true;
+      if (filterValue === "active") {
+        matchesFilter = student.rfid && student.status === "Y";
+      } else if (filterValue === "balance") {
+        matchesFilter = parseInt(student.saldo) > 0;
+      } else if (filterValue === "nobalance") {
+        matchesFilter = parseInt(student.saldo) === 0;
+      }
+      
+      return matchesSearch && matchesFilter;
+    });
+  }
+  
+  // Setup all event listeners
+  function setupEventListeners() {
+    // Search input
+    $("#searchInput").on("input", function() {
+      displayStudents(1); // Reset to first page when search changes
+    });
+    
+    // Filter select
+    $("#filterSelect").on("change", function() {
+      displayStudents(1); // Reset to first page when filter changes
+    });
+    
+    // Pagination buttons
+    $("#prevPage").on("click", function() {
+      if (currentPage > 1) {
+        displayStudents(currentPage - 1);
+      }
+    });
+    
+    $("#nextPage").on("click", function() {
+      const filteredData = filterStudentData();
+      const totalPages = Math.ceil(filteredData.length / itemsPerPage);
+      if (currentPage < totalPages) {
+        displayStudents(currentPage + 1);
+      }
+    });
+    
+    // Refresh button
+    $("#refreshBtn").on("click", function() {
+      showLoader();
+      fetchAllStudentData();
+    });
+    
+    // Row click event (for viewing student details)
+    $(document).on("click", ".student-row", function(e) {
+      // Hanya proses klik jika bukan pada tombol aksi
+      if (!$(e.target).hasClass('view-student-btn') && !$(e.target).closest('.view-student-btn').length) {
+        const nis = $(this).data("nis");
+        console.log("Baris santri diklik, NIS:", nis);
+        viewStudentDetail(nis);
+      }
+    });
+    
+    // About button
+    $("#aboutBtn").on("click", function() {
+      showAboutModal();
+    });
+    
+    // Close modal buttons
+    $(".closeModal").on("click", function() {
+      hideModals();
+    });
+    
+    // Modal container background click
+    $("#modalContainer").on("click", function(e) {
+      if (e.target === this) {
+        hideModals();
+      }
+    });
+    
+    // Process transaction button
+    $("#processTransaction").on("click", function() {
+      if (selectedStudent) {
+        processTransaction();
+      } else {
+        console.error("Tidak ada santri yang dipilih untuk transaksi");
+        alert("Silakan pilih santri terlebih dahulu.");
+      }
+    });
+  }
+  
+  // Show student modal with details
+  function showStudentModal(student) {
+    // Validasi data santri
+    if (!student || !student.nis || !student.nama) {
+      console.error("Data santri tidak lengkap:", student);
+      alert("Maaf, data santri tidak lengkap. Silakan refresh halaman.");
+      return;
+    }
+    
+    console.log("Menampilkan modal santri:", student);
+    
+    // Populate modal with student data
+    $("#modalStudentName").text(student.nama);
+    $("#modalStudentNis").text(`NIS: ${student.nis}`);
+    $("#modalStudentBalance").text(formatCurrency(parseInt(student.saldo || 0)));
+    
+    // RFID status
+    if (student.rfid && student.status === "Y") {
+      $("#modalRfidStatus").html(`
+        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+          <i class="fas fa-check-circle mr-1"></i> Aktif (${student.rfid})
+        </span>
+      `);
+    } else {
+      $("#modalRfidStatus").html(`
+        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+          <i class="fas fa-times-circle mr-1"></i> Tidak Aktif
+        </span>
+      `);
+    }
+    
+    // Reset transaction form
+    $("#transactionAmount").val("");
+    $("#transactionStatus").addClass("hidden").html("");
+    
+    // Show modal
+    $("#modalContainer").removeClass("hidden");
+    $("#studentModal").removeClass("hidden");
+  }
+  
+  // Show about modal
+  function showAboutModal() {
+    $("#modalContainer").removeClass("hidden");
+    $("#aboutModal").removeClass("hidden");
+  }
+  
+  // Hide all modals
+  function hideModals() {
+    $("#modalContainer").addClass("hidden");
+    $("#studentModal").addClass("hidden");
+    $("#aboutModal").addClass("hidden");
+  }
+  
+  // Process transaction
+function processTransaction() {
+  const amount = parseInt($("#transactionAmount").val());
+  const transactionType = $("#transactionType").val();
+  
+  // Validate input
+  if (!amount || isNaN(amount) || amount <= 0) {
+    showTransactionStatus("error", "Nominal transaksi harus lebih dari 0");
+    return;
+  }
+  
+  // Validate sufficient balance for payments
+  if (transactionType === "use_saving" && amount > parseInt(selectedStudent.saldo || 0)) {
+    showTransactionStatus("error", "Saldo tidak mencukupi untuk transaksi ini");
+    return;
+  }
+  
+  // Validate NIS
+  if (!selectedStudent || !selectedStudent.nis) {
+    showTransactionStatus("error", "Data santri tidak valid. Silakan pilih santri kembali.");
+    return;
+  }
+  
+  // Show processing status
+  showTransactionStatus("processing", "Memproses transaksi...");
+  
+  // Siapkan data transaksi
+  const transactionData = {
+    nis: selectedStudent.nis,
+    nominal: amount,
+    transactionType: transactionType
+  };
+  
+  console.log("Memproses transaksi:", transactionData);
+  
+  google.script.run
+    .withSuccessHandler(function(response) {
+      console.log("Respons transaksi:", response);
+      handleTransactionResponse(response, transactionData);
+    })
+    .withFailureHandler(function(error) {
+      console.error("Error transaksi:", error);
+      
+      // Tangani pesan error yang sudah diformat dengan baik
+      let errorMessage = "Gagal memproses transaksi";
+      
+      if (error && error.message) {
+        if (error.message.includes("NIS Not Found") || error.message.includes("tidak ditemukan")) {
+          errorMessage = "NIS santri tidak ditemukan di database ePesantren. Pastikan NIS terdaftar dan aktif.";
+        } else if (error.message.includes("saldo")) {
+          errorMessage = "Saldo santri tidak mencukupi untuk transaksi ini.";
+        } else {
+          errorMessage += ": " + error.message;
+        }
+      }
+      
+      logErrorToClient("processTransaction", error);
+      showTransactionStatus("error", errorMessage);
+    })
+    .processStudentTransaction(transactionData);
+}
+  
+  // Handle transaction response
+  function handleTransactionResponse(response, transactionData) {
+    console.log("Menangani respons transaksi:", response);
+    
+    if (!response || response.status !== 1) {
+      showTransactionStatus("error", "Transaksi gagal: " + (response.message || "Tidak ada respons dari server"));
+      return;
+    }
+    
+    // Update student data in our local array
+    const studentIndex = allStudentData.findIndex(s => String(s.nis) === String(selectedStudent.nis));
+    
+    if (studentIndex >= 0) {
+      if (transactionData.transactionType === "use_saving") {
+        // Deduct amount from balance
+        allStudentData[studentIndex].saldo = (parseInt(allStudentData[studentIndex].saldo) - transactionData.nominal).toString();
+      }
+      
+      // Update selected student
+      selectedStudent = allStudentData[studentIndex];
+      
+      // Update modal display
+      $("#modalStudentBalance").text(formatCurrency(parseInt(selectedStudent.saldo)));
+      
+      // Show success message
+      showTransactionStatus("success", "Transaksi berhasil diproses");
+      
+      // Update table display
+      displayStudents(currentPage);
+      
+      // Update stats
+      updateStats();
+    } else {
+      console.error("Tidak dapat menemukan data santri setelah transaksi");
+      
+      // Coba update dari respons jika tersedia
+      if (response.data) {
+        selectedStudent = response.data;
+        $("#modalStudentBalance").text(formatCurrency(parseInt(selectedStudent.saldo)));
+        showTransactionStatus("success", "Transaksi berhasil diproses");
+        
+        // Refresh data untuk memperbarui tabel
+        fetchAllStudentData();
+      } else {
+        showTransactionStatus("warning", "Transaksi berhasil tetapi data tidak diperbarui. Silakan refresh halaman.");
+      }
+    }
+  }
+  
+  // Show transaction status
+  function showTransactionStatus(type, message) {
+    const statusContainer = $("#transactionStatus");
+    let html = "";
+    
+    if (type === "processing") {
+      html = `
+        <div class="flex items-center p-4 bg-blue-50 rounded-md">
+          <div class="mr-3">
+            <div class="loader ease-linear rounded-full border-2 border-t-2 border-gray-200 h-5 w-5"></div>
+          </div>
+          <p class="text-blue-800 text-sm">${message}</p>
+        </div>
+      `;
+    } else if (type === "success") {
+      html = `
+        <div class="flex items-center p-4 bg-green-50 rounded-md">
+          <i class="fas fa-check-circle text-green-500 mr-3"></i>
+          <p class="text-green-800 text-sm">${message}</p>
+        </div>
+      `;
+    } else if (type === "warning") {
+      html = `
+        <div class="flex items-center p-4 bg-yellow-50 rounded-md">
+          <i class="fas fa-exclamation-triangle text-yellow-500 mr-3"></i>
+          <p class="text-yellow-800 text-sm">${message}</p>
+        </div>
+      `;
+    } else if (type === "error") {
+      html = `
+        <div class="flex items-center p-4 bg-red-50 rounded-md">
+          <i class="fas fa-exclamation-circle text-red-500 mr-3"></i>
+          <p class="text-red-800 text-sm">${message}</p>
+        </div>
+      `;
+    }
+    
+    statusContainer.html(html).removeClass("hidden");
+  }
+  
+  // Show loader
+  function showLoader() {
+    $("#loaderContainer").removeClass("hidden");
+  }
+  
+  // Hide loader
+  function hideLoader() {
+    $("#loaderContainer").addClass("hidden");
+  }
+  
+  // Handle API error
+  function handleApiError(error) {
+    console.error("API Error:", error);
+    logErrorToClient("handleApiError", error);
+    hideLoader();
+    
+    // Show error message
+    $("#studentTableBody").html(`
+      <tr>
+        <td colspan="6" class="px-6 py-4 text-center text-red-500">
+          <i class="fas fa-exclamation-triangle mr-2"></i>
+          Gagal memuat data: ${error}
+          <button id="retryBtn" class="text-pesantren-dark ml-2 underline">Coba lagi</button>
+        </td>
+      </tr>
+    `);
+    
+    // Add retry button event
+    $("#retryBtn").on("click", function() {
+      showLoader();
+      fetchAllStudentData();
+    });
+  }
+  
+  // Format currency
+  function formatCurrency(amount) {
+    return "Rp " + amount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  }
+  
+  // Log error to client console
+  function logErrorToClient(location, error) {
+    const errorMsg = error.message || error.toString();
+    console.error(`[${location}] Error:`, errorMsg);
+    
+    // Opsional: Kirim log ke server
+    try {
+      google.script.run
+        .withSuccessHandler(function() {
+          console.log("Error berhasil dicatat di server");
+        })
+        .logErrorToServer(errorMsg, location, {
+          timestamp: new Date().toString(),
+          userAgent: navigator.userAgent
+        });
+    } catch (e) {
+      console.error("Gagal mengirim log ke server:", e);
+    }
+  }
+  
+  // Global error handler
+  window.onerror = function(message, source, lineno, colno, error) {
+    console.error("Global error:", message, "di", source, "baris", lineno);
+    logErrorToClient("global", { message, source, lineno });
+    return true;
+  };
+</script>
+</body>
+</html>
